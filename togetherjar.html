@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Deary — Together · Love Jar</title>
+<script>
+  try {
+    if (sessionStorage.getItem("dearyUnlocked") !== "1") {
+      window.location.href = "index.html";
+    }
+  } catch(e){ window.location.href = "index.html"; }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --b1:#02050f; --deep:#0e2352; --b4:#1e58a4;
+    --blue:#85b7eb; --gold:#ffffff; --ice:#cfe6ff;
+    --text:#dceeff; --muted:rgba(181,212,244,.62);
+    --paper:#f6efe0; --paper-deep:#e9dcc4; --ink:#2c3554;
+    --ease:cubic-bezier(.22,1,.36,1);
+  }
+  html{background:var(--b1)}
+  body{
+    font-family:'DM Sans',sans-serif;color:var(--text);min-height:100vh;
+    background:var(--b1);
+    overflow-x:hidden;position:relative;
+  }
+  canvas#stars{position:fixed;inset:0;z-index:1;pointer-events:none}
+  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse 55% 40% at 50% 0%, rgba(55,138,221,0.28) 0%, transparent 65%),
+      radial-gradient(ellipse 45% 35% at 12% 20%, rgba(55,138,221,0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 60% at 88% 80%, rgba(10,30,74,0.6) 0%, transparent 65%),
+      radial-gradient(ellipse 70% 40% at 50% 108%, rgba(2,5,15,0.7) 0%, transparent 65%),
+      linear-gradient(165deg,#02050f 0%,#060f2b 45%,#0e2352 100%);}
+  .aurora{position:fixed;border-radius:50%;filter:blur(100px);z-index:0;pointer-events:none;opacity:.5}
+  .aurora.a1{width:520px;height:520px;left:-160px;top:-160px;background:radial-gradient(circle,rgba(55,138,221,.35),transparent 70%);animation:drift1 14s ease-in-out infinite alternate}
+  .aurora.a2{width:460px;height:460px;right:-140px;bottom:-140px;background:radial-gradient(circle,rgba(133,183,235,.2),transparent 70%);animation:drift2 18s ease-in-out infinite alternate}
+  @keyframes drift1{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.12)}}
+  @keyframes drift2{from{transform:translate(0,0) scale(1.1)}to{transform:translate(-50px,-40px) scale(1)}}
+
+  main{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:26px 20px 60px;text-align:center;transition:filter .6s var(--ease),transform .6s var(--ease),opacity .6s var(--ease)}
+  main.soften{filter:brightness(.72) saturate(.92);transform:scale(.985)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .back{
+    display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--blue);
+    background:rgba(8,20,48,.5);border:1px solid rgba(133,183,235,.28);border-radius:50px;padding:10px 22px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    font-size:.8rem;font-weight:600;letter-spacing:.08em;transition:all .35s var(--ease);
+  }
+  .back:hover{border-color:rgba(255,255,255,.6);color:#fff;box-shadow:0 0 20px rgba(255,255,255,.25);transform:translateX(-3px)}
+  .count-pill{font-size:.68rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--ice);
+    border:1px solid rgba(255,255,255,.3);border-radius:50px;padding:9px 20px;background:rgba(255,255,255,.06);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:all .4s var(--ease)}
+  .kicker{font-size:.66rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+  h1{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,6vw,2.6rem);font-weight:700;color:#fff}
+  h1 em{font-style:italic;font-weight:400;color:var(--ice)}
+  .sub{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--muted);font-size:1.1rem;margin:8px 0 4px}
+
+  /* ── stage : the jar lives directly in the environment ── */
+  .stage{position:relative;min-height:62vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 20px}
+  .jar-aura{
+    position:absolute;left:50%;top:46%;width:min(78vw,380px);aspect-ratio:1;transform:translate(-50%,-50%);
+    background:radial-gradient(circle,rgba(133,183,235,.22) 0%,rgba(133,183,235,.07) 45%,transparent 70%);
+    filter:blur(6px);pointer-events:none;transition:opacity .6s var(--ease);animation:breathe 5s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.65;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.07)}}
+  .stage.excited .jar-aura{opacity:1;animation-duration:2.2s}
+  .jar-float{animation:floaty 6s ease-in-out infinite}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .jar-hit{
+    background:none;border:none;padding:26px;cursor:pointer;border-radius:40px;
+    transition:transform .18s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .jar-hit:active{transform:scale(.965)}
+  .jar-hit:focus-visible{outline:2px solid rgba(207,230,255,.7);outline-offset:6px}
+  .jar-hit.nudge{animation:nudge .45s var(--ease)}
+  @keyframes nudge{0%{transform:translateY(0) rotate(0)}30%{transform:translateY(3px) rotate(-1.2deg)}60%{transform:translateY(-2px) rotate(1deg)}100%{transform:translateY(0) rotate(0)}}
+  .jar-hit svg{width:min(64vw,270px);height:auto;display:block;overflow:visible}
+  .jar-prompt{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.15rem;color:var(--muted);margin-top:6px;animation:promptPulse 3s ease-in-out infinite;transition:opacity .4s var(--ease)}
+  @keyframes promptPulse{0%,100%{opacity:.55}50%{opacity:1}}
+  .stage.busy .jar-prompt{opacity:0}
+  .jar-empty{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--muted);margin-top:6px;opacity:0;transition:opacity .8s var(--ease)}
+  .stage.broken .jar-empty{opacity:1}
+  .stage.broken .jar-prompt{display:none}
+  .inner-glow{transition:opacity .6s var(--ease)}
+  .stage.excited .inner-glow{opacity:.95}
+  .jar-letters rect{animation:letterBob 4.5s ease-in-out infinite}
+  .jar-letters rect:nth-child(2){animation-delay:-1.2s}
+  .jar-letters rect:nth-child(3){animation-delay:-2.1s}
+  .jar-letters rect:nth-child(4){animation-delay:-3s}
+  .jar-letters rect:nth-child(5){animation-delay:-3.8s}
+  #jarLetters rect{transition:opacity .8s ease}
+  @keyframes letterBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .mote{animation:rise 6s linear infinite}
+  .mote.m2{animation-delay:-2s}.mote.m3{animation-delay:-4s}
+  @keyframes rise{0%{transform:translateY(0);opacity:0}25%{opacity:.9}80%{opacity:.5}100%{transform:translateY(-46px);opacity:0}}
+  .spark{animation:twinkle 5s ease-in-out infinite}
+  .spark.s2{animation-delay:-2.4s}
+  .glint{animation:glintTw 7s ease-in-out infinite;filter:drop-shadow(0 0 3px #fff)}
+  .glint.g2{animation-delay:-3.5s}
+  @keyframes glintTw{0%,100%{opacity:.1}50%{opacity:.95}}
+  @keyframes twinkle{0%,100%{opacity:.15}50%{opacity:1}}
+
+  /* ── flying folded letter ── */
+  .flight{
+    position:fixed;left:0;top:0;width:64px;height:44px;z-index:60;pointer-events:none;opacity:0;
+    border-radius:7px;border:1px solid rgba(120,110,90,.35);
+    background:linear-gradient(165deg,#faf4e6 0%,#f1e6cf 55%,#e4d4b4 100%);
+    box-shadow:0 0 0 1px rgba(255,255,255,.25), 0 10px 30px rgba(0,0,0,.5), 0 0 26px rgba(207,230,255,.55);
+  }
+  .flight::before{content:"";position:absolute;inset:0;border-radius:6px;
+    background:linear-gradient(115deg,transparent 44%,rgba(120,110,90,.28) 45.5%,transparent 47%,transparent 53%,rgba(120,110,90,.28) 54.5%,transparent 56%);}
+  .flight::after{content:"♡";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:15px;color:#8a93b8;}
+
+  /* ── dim veil ── */
+  .veil{position:fixed;inset:0;z-index:40;background:rgba(2,5,15,.55);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    opacity:0;pointer-events:none;transition:opacity .6s var(--ease)}
+  .veil.show{opacity:1}
+
+  /* ── open paper letter ── */
+  .letter-open{
+    position:fixed;left:50%;top:50%;z-index:50;width:min(88vw,430px);
+    transform:translate(-50%,-50%) scale(0.92);opacity:0;pointer-events:none;
+    transition:transform .6s cubic-bezier(0.16,1,0.3,1),opacity .4s ease;
+  }
+  .letter-open.shown{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  .paper{
+    position:relative;border-radius:10px;padding:46px 36px 34px;text-align:center;overflow:hidden;
+    background:linear-gradient(170deg,#fbf6ea 0%,var(--paper) 55%,var(--paper-deep) 100%);
+    box-shadow:0 40px 90px rgba(0,0,0,.65), 0 0 60px rgba(207,230,255,.22), inset 0 0 60px rgba(133,183,235,.1);
+    color:var(--ink);
+  }
+  .paper::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,rgba(133,183,235,.14),transparent 40%);}
+  .paper::after{content:"";position:absolute;top:0;left:8%;right:8%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(120,110,90,.4),transparent);}
+  .paper .deco{font-size:1.3rem;color:#9aa3c7;filter:drop-shadow(0 0 8px rgba(133,183,235,.5))}
+  .paper .rule{width:64px;height:1px;margin:14px auto 18px;background:linear-gradient(90deg,transparent,rgba(120,110,90,.5),transparent)}
+  .paper .msg{font-family:'Cormorant Garamond',serif;font-size:1.32rem;line-height:1.75;color:var(--ink)}
+  .paper .sign{margin-top:16px;font-family:'Playfair Display',serif;font-style:italic;font-size:.95rem;color:#6b7396}
+  .paper .prog{margin-top:14px;font-family:'DM Sans',sans-serif;font-size:.64rem;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:#8a93b8}
+  .paper .actions{margin-top:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .rise{opacity:0;transform:translateY(12px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+  .letter-open.shown .rise{opacity:1;transform:translateY(0)}
+  .letter-open.shown .rise.d1{transition-delay:.35s}.letter-open.shown .rise.d2{transition-delay:.5s}
+  .letter-open.shown .rise.d3{transition-delay:.65s}.letter-open.shown .rise.d4{transition-delay:.8s}
+  .letter-open.shown .rise.d5{transition-delay:.95s}
+  .btn{border-radius:50px;padding:13px 40px;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:all .35s var(--ease);border:1px solid transparent;font-family:'DM Sans',sans-serif}
+  .btn-gold{background:linear-gradient(135deg,#ffffff,#eaf2ff);color:#16233f;box-shadow:0 8px 26px rgba(207,230,255,.35)}
+  .btn-gold:hover{transform:scale(1.04);box-shadow:0 10px 32px rgba(207,230,255,.5)}
+  .btn-gold:active{transform:scale(.97)}
+  .ghost-link{background:none;border:none;color:#8a93b8;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;cursor:pointer;padding:4px 10px}
+  .ghost-link:hover{color:#3a4160}
+
+  .hintline{margin-top:26px;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);opacity:.7}
+
+  /* ── keepsake archive ── */
+  .archive{margin-top:46px}
+  .arch-kicker{font-size:.64rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+  .arch-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:#fff;margin-bottom:6px}
+  .arch-sub{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--muted);font-size:1.02rem;margin-bottom:4px}
+  .arch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:20px}
+  .arch-card{position:relative;border-radius:16px;padding:16px 8px;cursor:pointer;text-align:center;color:var(--text);font-family:'DM Sans',sans-serif;
+    background:linear-gradient(160deg,rgba(13,27,48,.45),rgba(9,19,36,.65));background-color:rgba(6,12,24,0);
+    border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    box-shadow:0 14px 30px rgba(0,0,0,.45);
+    transition:background .3s ease,border-color .3s ease,box-shadow .3s ease,transform .3s var(--ease)}
+  .arch-card:hover{transform:translateY(-3px)}
+  .arch-num{font-family:'Playfair Display',serif;font-size:.92rem;color:#fff;margin-bottom:6px}
+  .arch-state{font-size:.66rem;letter-spacing:.06em;color:var(--muted);line-height:1.55}
+  .arch-card[data-mode="opened"] .arch-state{color:var(--ice)}
+  .arch-card[data-mode="ready"]{border-color:rgba(255,255,255,.55);box-shadow:0 0 24px rgba(207,230,255,.35),0 14px 30px rgba(0,0,0,.45)}
+  .arch-card[data-mode="ready"] .arch-state{color:var(--ice);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:.6rem}
+  .arch-card[data-mode="locked"]{opacity:.78}
+  .arch-card.deny{animation:denyShake .4s ease}
+  @keyframes denyShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+  .arch-t{font-variant-numeric:tabular-nums;color:var(--ice)}
+
+  /* ── sealed letter overlay ── */
+  .sealed-open{position:fixed;left:50%;top:50%;z-index:50;width:min(88vw,380px);
+    transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;
+    transition:transform .5s var(--ease),opacity .4s ease}
+  .sealed-open.shown{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  .sealed-card{position:relative;text-align:center;border-radius:22px;padding:40px 32px;overflow:hidden;
+    background:rgba(10,24,56,.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,.22);box-shadow:0 30px 70px rgba(0,0,0,.6);
+    transition:border-color .5s ease,box-shadow .5s ease}
+  .sealed-card.ready{border-color:rgba(255,255,255,.65);box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 44px rgba(207,230,255,.4)}
+  .sealed-mark{font-size:1.4rem;color:var(--ice);margin-bottom:12px;text-shadow:0 0 12px rgba(207,230,255,.6)}
+  .sealed-title{font-family:'Playfair Display',serif;font-size:1.28rem;color:#fff;margin-bottom:10px}
+  .sealed-timer{font-size:.8rem;font-weight:600;letter-spacing:.12em;color:var(--ice);margin-bottom:20px;font-variant-numeric:tabular-nums}
+  .sealed-actions{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .ghost-dark{background:none;border:none;color:var(--muted);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;cursor:pointer;padding:4px 10px}
+  .ghost-dark:hover{color:#fff}
+
+  /* ── keepsake popup ── */
+  .keep-btn{margin-top:16px;background:rgba(8,20,48,.5);border:1px solid rgba(133,183,235,.3);color:var(--ice);border-radius:50px;padding:10px 26px;font-size:.7rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:all .35s var(--ease);font-family:'DM Sans',sans-serif}
+  .keep-btn:hover{border-color:rgba(207,230,255,.6);box-shadow:0 0 18px rgba(207,230,255,.25);transform:translateY(-2px)}
+  .keep-open{position:fixed;left:50%;top:50%;z-index:50;width:min(92vw,560px);max-height:84vh;overflow-y:auto;
+    transform:translate(-50%,-50%) scale(.92);opacity:0;pointer-events:none;
+    transition:transform .5s var(--ease),opacity .4s ease;text-align:center;
+    background:rgba(8,18,40,.78);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);
+    border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:34px 26px 24px;
+    box-shadow:0 30px 70px rgba(0,0,0,.6)}
+  .keep-open.shown{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  .keep-open .arch-grid{grid-template-columns:repeat(2,1fr);margin-top:18px}
+  .keep-open .arch-title{font-size:1.25rem}
+
+  @media(max-width:560px){
+    .topbar{flex-direction:column}
+    .jar-hit svg{width:min(70vw,250px)}
+    .paper{padding:38px 26px 28px}
+    .paper .msg{font-size:1.2rem}
+    .stage{min-height:58vh}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div class="bg"></div>
+<div class="aurora a1"></div>
+<div class="aurora a2"></div>
+
+<main id="main">
+  <div class="topbar">
+    <a class="back" href="togetherhome.html">← Back to Home</a>
+    <div class="count-pill" id="countPill">10 letters waiting</div>
+  </div>
+  <div class="kicker">Deary · Together</div>
+  <h1>The <em>Love Jar</em></h1>
+  <div class="sub">little letters, waiting in the quiet — tap the jar ♡</div>
+
+  <div class="stage" id="stage">
+    <div class="jar-aura"></div>
+    <div class="jar-float">
+      <button class="jar-hit" id="jarHit" aria-label="Tap the jar to open a letter">
+        <svg viewBox="0 0 300 400" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="glassBody" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#cfe6ff" stop-opacity=".22"/>
+              <stop offset=".35" stop-color="#85b7eb" stop-opacity=".07"/>
+              <stop offset=".7" stop-color="#85b7eb" stop-opacity=".04"/>
+              <stop offset="1" stop-color="#cfe6ff" stop-opacity=".14"/>
+            </linearGradient>
+            <radialGradient id="innerGlow" cx=".5" cy=".62" r=".55">
+              <stop offset="0" stop-color="#eaf4ff" stop-opacity=".5"/>
+              <stop offset=".55" stop-color="#9cc4ef" stop-opacity=".16"/>
+              <stop offset="1" stop-color="#9cc4ef" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="lidGlass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#eaf4ff" stop-opacity=".55"/>
+              <stop offset="1" stop-color="#85b7eb" stop-opacity=".18"/>
+            </linearGradient>
+            <linearGradient id="paperFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#faf4e6"/>
+              <stop offset="1" stop-color="#e6d6b6"/>
+            </linearGradient>
+          </defs>
+
+          <!-- inner glow -->
+          <ellipse class="inner-glow" cx="150" cy="290" rx="86" ry="52" fill="url(#innerGlow)" opacity=".7"/>
+
+          <!-- folded letters resting inside : drawn by JS to match the waiting count -->
+          <g class="jar-letters" id="jarLetters"></g>
+
+          <!-- rising motes inside -->
+          <circle class="mote"    cx="120" cy="300" r="2.2" fill="#eaf4ff"/>
+          <circle class="mote m2" cx="155" cy="315" r="1.7" fill="#cfe6ff"/>
+          <circle class="mote m3" cx="185" cy="295" r="2"   fill="#eaf4ff"/>
+
+          <!-- two quiet glints inside the glass -->
+          <circle class="glint" cx="130" cy="190" r="1.8" fill="#ffffff"/>
+          <circle class="glint g2" cx="175" cy="235" r="1.4" fill="#cfe6ff"/>
+
+          <!-- glass body -->
+          <path d="M118,62 L118,88 C118,100 100,104 84,112 C64,122 55,142 55,168 L55,318 C55,348 78,364 106,364 L194,364 C222,364 245,348 245,318 L245,168 C245,142 236,122 216,112 C200,104 182,100 182,88 L182,62 Z"
+                fill="url(#glassBody)" stroke="#cfe6ff" stroke-opacity=".55" stroke-width="2"/>
+
+          <!-- glass highlights -->
+          <rect x="70" y="140" width="15" height="165" rx="7.5" fill="#ffffff" opacity=".16"/>
+          <rect x="90" y="132" width="5" height="120" rx="2.5" fill="#ffffff" opacity=".22"/>
+          <rect x="226" y="150" width="6" height="130" rx="3" fill="#cfe6ff" opacity=".18"/>
+          <ellipse cx="150" cy="366" rx="70" ry="8" fill="#85b7eb" opacity=".18"/>
+
+          <!-- lid -->
+          <rect x="104" y="34" width="92" height="30" rx="14" fill="url(#lidGlass)" stroke="#eaf4ff" stroke-opacity=".6" stroke-width="1.5"/>
+          <circle cx="150" cy="24" r="11" fill="url(#lidGlass)" stroke="#eaf4ff" stroke-opacity=".65" stroke-width="1.5"/>
+          <circle cx="150" cy="24" r="3.5" fill="#eaf4ff" opacity=".8"/>
+
+          <!-- occasional sparkles -->
+          <path class="spark"    d="M96,120 l0,14 M89,127 l14,0" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+          <path class="spark s2" d="M208,240 l0,12 M202,246 l12,0" stroke="#cfe6ff" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="jar-prompt" id="jarPrompt">tap the jar ♡</div>
+    <div class="jar-empty" id="jarEmpty">the jar is empty — every letter lives in your heart now ♡</div>
+  </div>
+  <div class="hintline">ten little letters · open them slowly</div>
+
+  <div><button class="keep-btn" id="keepBtn">✦ Keepsake · opened letters</button></div>
+</main>
+
+<div class="veil" id="veil"></div>
+
+<div class="flight" id="flight" aria-hidden="true"></div>
+
+<div class="letter-open" id="letterOpen" role="dialog" aria-modal="true" aria-label="An opened love letter">
+  <div class="paper">
+    <div class="deco rise d1">♡</div>
+    <div class="msg rise d2" id="letterMsg"></div>
+    <div class="rule rise d3"></div>
+    <div class="sign rise d3">✦ deary ✦</div>
+    <div class="prog rise d4" id="letterProg">1 / 10 letters opened</div>
+    <div class="actions rise d5">
+      <button class="btn btn-gold" id="anotherBtn">Open another ♡</button>
+      <button class="ghost-link" id="backBtn">← back to the jar</button>
+    </div>
+  </div>
+</div>
+
+<div class="keep-open" id="keepOpen" role="dialog" aria-modal="true" aria-label="Keepsake letters">
+  <div class="arch-kicker">✦ Keepsake ✦</div>
+  <div class="arch-title">Every opened letter lives here</div>
+  <div class="arch-grid" id="archiveGrid"></div>
+  <div style="margin-top:20px"><button class="ghost-dark" id="keepCloseBtn">← back to the jar</button></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var MOBILE = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
+  var FINE = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+
+  /* ── the 10 letters : 5 Deary-fixed + 5 personal slots ── */
+  var FIXED = [
+    "On hard days, remember this: you are loved more deeply than you know. Rest, breathe — I'll be right here, always on your side.",
+    "If the world feels loud tonight, come back to this: us. Two hearts, one quiet sky. Everything else can wait until morning.",
+    "Good morning, my favorite person. May your coffee be strong and your worries be small. Text me when you smile — I'll be smiling too.",
+    "Distance is just geography; you carry my heart with you. Close your eyes — I'm the warmth in your pocket, the song in your head.",
+    "I promise to choose you — on easy days and stormy ones, in laughter and in silence. Together, forever, no fine print."
+  ];
+  var FALLBACK = [
+    "Somewhere between hello and forever, I found my favorite place — right next to you.",
+    "You are my calm and my chaos, my quiet and my song. Thank you for being exactly you.",
+    "If I had one wish, I'd use it to relive our best day — and then wish for a thousand more.",
+    "Your laugh is my favorite sound in every universe, including this one.",
+    "Whatever tomorrow brings, tonight I am simply grateful that you are mine."
+  ];
+  function loadCustom(i){
+    try { return localStorage.getItem('deary_love_' + i) || ""; } catch(e){ return ""; }
+  }
+  function allMessages(){
+    var arr = FIXED.slice();
+    for(var j = 0; j < 5; j++){ arr.push(loadCustom(j) || FALLBACK[j]); }
+    return arr;
+  }
+
+  /* letters visible inside the jar = letters still waiting */
+  var SLOTS = [
+    [88,276,38,26,-8,.9],[128,272,38,26,4,.95],[168,274,38,26,-3,.88],[204,278,36,26,9,.9],
+    [92,306,38,26,-6,.92],[130,310,38,26,3,.95],[168,308,38,26,-4,.9],[202,312,36,26,8,.88],
+    [122,250,38,26,5,.9],[160,252,38,26,-6,.92]
+  ];
+  var NS = 'http://www.w3.org/2000/svg';
+  function buildJarLetters(){
+    var g = document.getElementById('jarLetters');
+    SLOTS.forEach(function(s){
+      var r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', s[0]); r.setAttribute('y', s[1]);
+      r.setAttribute('width', s[2]); r.setAttribute('height', s[3]);
+      r.setAttribute('rx', 4); r.setAttribute('fill', 'url(#paperFill)');
+      r.setAttribute('opacity', s[5]);
+      r.setAttribute('transform', 'rotate(' + s[4] + ' ' + (s[0] + s[2]/2) + ' ' + (s[1] + s[3]/2) + ')');
+      g.appendChild(r);
+    });
+  }
+  function renderJarLetters(){
+    var remaining = 10 - openedCount();
+    var g = document.getElementById('jarLetters');
+    Array.prototype.forEach.call(g.childNodes, function(r, i){
+      if(r.nodeType !== 1) return;
+      r.style.opacity = i < remaining ? '' : '0';
+    });
+  }
+
+  /* draw pattern (message numbers) : 1 8 2 9 3 4 5 6 7 10 */
+  var PATTERN = [0,7,1,8,2,3,4,5,6,9], ptr = 0;
+  function openedAt(n){
+    try { var v = localStorage.getItem('deary_opened_at_' + n); return v ? parseInt(v, 10) : 0; } catch(e){ return 0; }
+  }
+  function isOpened(n){ return openedAt(n) > 0; }
+  function markOpened(n){
+    try { localStorage.setItem('deary_opened_at_' + n, String(Date.now())); } catch(e){}
+  }
+  function openedCount(){
+    var n = 0;
+    for(var k = 1; k <= 10; k++){ if(isOpened(k)) n++; }
+    return n;
+  }
+  /* every letter opens the moment its turn comes */
+  function lockState(n){
+    if(isOpened(n)) return { status: 'opened' };
+    return { status: 'open' };
+  }
+  function isSpent(){
+    try { if(localStorage.getItem('deary_jar_spent') === '1') return true; } catch(e){}
+    return openedCount() >= 10;
+  }
+  function setSpent(){
+    try { localStorage.setItem('deary_jar_spent', '1'); } catch(e){}
+  }
+  function drawNext(){
+    for(var t = 0; t < PATTERN.length; t++){
+      var i = PATTERN[(ptr + t) % PATTERN.length];
+      if(!isOpened(i + 1)){ ptr = (ptr + t + 1) % PATTERN.length; return i; }
+    }
+    return -1;
+  }
+
+  var stage = document.getElementById('stage'),
+      jarHit = document.getElementById('jarHit'),
+      veil = document.getElementById('veil'),
+      flight = document.getElementById('flight'),
+      letterOpen = document.getElementById('letterOpen'),
+      letterMsg = document.getElementById('letterMsg'),
+      letterProg = document.getElementById('letterProg'),
+      pill = document.getElementById('countPill'),
+      anotherBtn = document.getElementById('anotherBtn'),
+      backBtn = document.getElementById('backBtn');
+  var busy = false;
+
+  function updateProgress(){
+    var n = openedCount();
+    letterProg.textContent = n + " / 10 letters opened";
+    pill.textContent = n === 0 ? "10 letters waiting" : (n + " / 10 letters opened");
+  }
+  buildJarLetters(); renderJarLetters(); updateProgress();
+
+  function jarMouth(){
+    var r = jarHit.querySelector('svg').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height * 0.12 };
+  }
+  function centerSpot(){
+    return { x: window.innerWidth / 2, y: window.innerHeight * 0.40 };
+  }
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, REDUCED ? 0 : ms); }); };
+
+  function fly(from, to, grow){
+    if(REDUCED || !flight.animate) return Promise.resolve();
+    flight.style.left = "0"; flight.style.top = "0";
+    flight.style.opacity = "1";
+    var a = flight.animate([
+      { transform: "translate(" + (from.x - 32) + "px," + (from.y - 22) + "px) scale(" + (grow ? 0.35 : 1.1) + ")", opacity: grow ? 0 : 1 },
+      { transform: "translate(" + (to.x - 32) + "px," + (to.y - 22) + "px) scale(" + (grow ? 1.1 : 0.35) + ")", opacity: grow ? 1 : 0 }
+    ], { duration: grow ? 950 : 750, easing: "cubic-bezier(.22,1,.36,1)", fill: "forwards" });
+    return a.finished.then(function(){
+      try { a.cancel(); } catch(e){}
+      flight.style.opacity = grow ? "1" : "0";
+    }).catch(function(){ try { a.cancel(); } catch(e){} });
+  }
+
+  var FINALE_MSG = "The jar is empty, my love — all ten letters now live in your heart. ♡";
+
+  function emerge(text, onShown){
+    busy = true;
+    stage.classList.add('busy','excited');
+    jarHit.classList.remove('nudge'); void jarHit.offsetWidth; jarHit.classList.add('nudge');
+
+    wait(420).then(function(){
+      var mouth = jarMouth(), spot = centerSpot();
+      return fly(mouth, spot, true);
+    }).then(function(){
+      flight.style.opacity = "0";
+      veil.classList.add('show');
+      document.getElementById('main').classList.add('soften');
+      return wait(350);
+    }).then(function(){
+      letterMsg.textContent = text;
+      onShown();
+      letterOpen.classList.add('shown');
+      stage.classList.remove('excited');
+      return wait(1100);
+    }).then(function(){ busy = false; });
+  }
+
+  var finaleSeen = false;
+  function openSequence(){
+    if(busy) return;
+    if(typeof keepOpen !== 'undefined' && keepOpen.classList.contains('shown')) return;
+    if(openedCount() >= 10 || isSpent()){
+      if(!spentAtLoad && !finaleSeen){
+        finaleSeen = true; openFinale(); return;
+      }
+      jarHit.classList.remove('nudge'); void jarHit.offsetWidth; jarHit.classList.add('nudge');
+      return;
+    }
+    var idx = drawNext();
+    if(idx < 0){ finaleSeen = true; openFinale(); return; }
+    anotherBtn.textContent = "Open another ♡";
+    anotherBtn.style.display = "";
+    emerge(allMessages()[idx], function(){
+      markOpened(idx + 1); updateProgress(); renderJarLetters(); refreshArchive();
+      if(openedCount() >= 10){ stage.classList.add('broken'); setSpent(); }
+    });
+  }
+
+  function openFinale(){
+    anotherBtn.style.display = "none";
+    emerge(FINALE_MSG, function(){ updateProgress(); });
+  }
+
+  function foldAndReturn(autoNext){
+    if(busy) return; busy = true;
+    letterOpen.classList.remove('shown');
+    wait(420).then(function(){
+      var spot = centerSpot(), mouth = jarMouth();
+      veil.classList.remove('show');
+      document.getElementById('main').classList.remove('soften');
+      return fly(spot, mouth, false);
+    }).then(function(){
+      flight.style.opacity = "0";
+      stage.classList.remove('busy');
+      stage.classList.add('excited');
+      return wait(500);
+    }).then(function(){
+      stage.classList.remove('excited');
+      busy = false;
+      if(autoNext) openSequence();
+    });
+  }
+
+  jarHit.addEventListener('click', openSequence);
+  anotherBtn.addEventListener('click', function(){ foldAndReturn(true); });
+  backBtn.addEventListener('click', function(){
+    if(rereadMode){
+      rereadMode = false;
+      anotherBtn.style.display = openedCount() >= 10 ? "none" : "";
+      letterOpen.classList.remove('shown');
+      veil.classList.remove('show');
+      document.getElementById('main').classList.remove('soften');
+      return;
+    }
+    foldAndReturn(false);
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    if(keepOpen.classList.contains('shown')){ hideKeep(); return; }
+    if(letterOpen.classList.contains('shown') && !rereadMode) foldAndReturn(false);
+    else if(letterOpen.classList.contains('shown')) backBtn.click();
+  });
+
+  /* cooldown retired : 8 · 9 · 10 open like the rest */
+  var rereadMode = false;
+
+  /* ── keepsake popup ── */
+  var keepOpen = document.getElementById('keepOpen'),
+      keepBtn = document.getElementById('keepBtn'),
+      keepCloseBtn = document.getElementById('keepCloseBtn');
+  function showKeep(){
+    if(busy || letterOpen.classList.contains('shown')) return;
+    refreshArchive();
+    veil.classList.add('show');
+    document.getElementById('main').classList.add('soften');
+    keepOpen.classList.add('shown');
+  }
+  function hideKeep(){
+    keepOpen.classList.remove('shown');
+    if(!letterOpen.classList.contains('shown')){
+      veil.classList.remove('show');
+      document.getElementById('main').classList.remove('soften');
+    }
+  }
+  keepBtn.addEventListener('click', showKeep);
+  keepCloseBtn.addEventListener('click', hideKeep);
+
+  /* ── keepsake archive ── */
+  var archiveGrid = document.getElementById('archiveGrid');
+  function modeOf(n){
+    return lockState(n).status === 'opened' ? 'opened' : 'sealed';
+  }
+  function buildArchive(){
+    for(var n = 1; n <= 10; n++){
+      (function(num){
+        var d = document.createElement('button');
+        d.className = 'arch-card';
+        d.setAttribute('aria-label', 'Letter ' + num);
+        d.innerHTML = '<div class="arch-num">Letter ' + num + '</div><div class="arch-state"></div>';
+        d.addEventListener('click', function(){ onArchTap(num); });
+        archiveGrid.appendChild(d);
+      })(n);
+    }
+    refreshArchive();
+  }
+  function paintArchCard(card, n){
+    var st = lockState(n);
+    var el = card.querySelector('.arch-state');
+    card.dataset.mode = modeOf(n);
+    if(st.status === 'opened'){ el.textContent = 'opened ♡ · tap to re-read'; }
+    else { el.textContent = 'waiting in the jar ♡'; }
+  }
+  function refreshArchive(){
+    for(var n = 1; n <= 10; n++){ paintArchCard(archiveGrid.children[n - 1], n); }
+  }
+  function onArchTap(n){
+    if(lockState(n).status === 'opened'){ hideKeep(); openReread(n - 1); return; }
+    hideKeep();
+    document.getElementById('stage').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'center' });
+  }
+  function openReread(idx){
+    if(busy || letterOpen.classList.contains('shown')) return;
+    rereadMode = true;
+    anotherBtn.style.display = "none";
+    letterMsg.textContent = allMessages()[idx];
+    veil.classList.add('show');
+    document.getElementById('main').classList.add('soften');
+    letterOpen.classList.add('shown');
+  }
+  var spentAtLoad = isSpent();
+  buildArchive();
+  if(isSpent()){ stage.classList.add('broken'); setSpent(); }
+
+  /* gentle parallax : desktop pointers only */
+  if(FINE && !REDUCED && !MOBILE){
+    var jarFloat = document.querySelector('.jar-float');
+    document.addEventListener('mousemove', function(e){
+      var dx = (e.clientX / window.innerWidth - 0.5) * 10;
+      var dy = (e.clientY / window.innerHeight - 0.5) * 8;
+      jarFloat.style.translate = dx.toFixed(1) + "px " + dy.toFixed(1) + "px";
+    });
+  }
+
+  /* quiet midnight sky : home's mood, fewer glitters */
+  var c = document.getElementById('stars'), ctx = c.getContext('2d'), W, H, stars = [], flies = [], meteors = [];
+  function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; init(); }
+  function init(){
+    stars = []; flies = [];
+    var isMobile = window.innerWidth < 640;
+    var n = Math.min(isMobile ? 30 : 55, Math.floor(W * H / 16000));
+    for(var i = 0; i < n; i++){
+      stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.3 + .25,
+        a: Math.random()*.6 + .12, da: (Math.random()-.5)*.014, big: Math.random() < .1 });
+    }
+    var f = isMobile ? 5 : 10;
+    for(var j = 0; j < f; j++){
+      flies.push({ x: Math.random()*W, y: H*0.3 + Math.random()*H*0.7, r: Math.random()*1.6 + .8,
+        vy: Math.random()*.3 + .1, drift: (Math.random()-.5)*.4, a: Math.random()*.4 + .15, ph: Math.random()*Math.PI*2 });
+    }
+  }
+  function spawnMeteor(){
+    if(Math.random() > 0.003 || meteors.length > 1) return;
+    meteors.push({ x: Math.random()*W*0.8 + W*0.1, y: Math.random()*H*0.3,
+      len: Math.random()*100 + 60, speed: Math.random()*7 + 5, life: 1 });
+  }
+  (function loop(){
+    ctx.clearRect(0, 0, W, H);
+    stars.forEach(function(s){
+      s.a += s.da; if(s.a <= .06 || s.a >= .8) s.da *= -1;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(170,205,245,' + s.a.toFixed(3) + ')';
+      if(s.big){ ctx.shadowBlur = 8; ctx.shadowColor = '#cfe6ff'; } else { ctx.shadowBlur = 0; }
+      ctx.fill(); ctx.shadowBlur = 0;
+    });
+    flies.forEach(function(fl){
+      fl.ph += 0.02; fl.y -= fl.vy; fl.x += Math.sin(fl.y * 0.02 + fl.ph) * fl.drift;
+      if(fl.y < -12){ fl.y = H + 12; fl.x = Math.random()*W; }
+      var tw = fl.a + Math.sin(fl.ph * 2) * 0.12;
+      ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(207,230,255,' + Math.max(0.06, tw).toFixed(3) + ')';
+      ctx.shadowBlur = 12; ctx.shadowColor = '#9cc4ef'; ctx.fill(); ctx.shadowBlur = 0;
+    });
+    spawnMeteor();
+    for(var i = meteors.length - 1; i >= 0; i--){
+      var m = meteors[i];
+      m.x += m.speed; m.y += m.speed * 0.45; m.life -= 0.016;
+      if(m.life <= 0){ meteors.splice(i, 1); continue; }
+      var grad = ctx.createLinearGradient(m.x, m.y, m.x - m.len, m.y - m.len * 0.45);
+      grad.addColorStop(0, 'rgba(234,244,255,' + m.life.toFixed(3) + ')');
+      grad.addColorStop(1, 'rgba(133,183,235,0)');
+      ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x - m.len, m.y - m.len * 0.45);
+      ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    if(!REDUCED) requestAnimationFrame(loop);
+  })();
+  window.addEventListener('resize', resize); resize();
+})();
+</script>
+</body>
+</html>
