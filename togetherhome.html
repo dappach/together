@@ -5,12 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Deary — Together</title>
 <script>
+  // Builder preview guard — auto-unlock when previewing inside the builder
+  if (window.location.search.includes('preview=1') || window.location.hash.includes('preview=1')) {
+    try { sessionStorage.setItem('dearyUnlocked', '1'); } catch(e){}
+  }
   // Auth guard — redirect to lock screen if not unlocked
   try {
     if (sessionStorage.getItem("dearyUnlocked") !== "1") {
-      window.location.href = "index.html";
+      window.location.href = "index_2.html";
     }
-  } catch(e){ window.location.href = "index.html"; }
+  } catch(e){ window.location.href = "index_2.html"; }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -218,6 +222,11 @@
     .nav-tabs{padding:6px;gap:6px}
     .nav-btn{padding:10px 16px;font-size:.78rem;letter-spacing:.04em}
     .mono-letters{font-size:2.2rem}
+    /* ── mobile GPU/CPU optimizations ── */
+    .aurora{filter:blur(35px);animation:none!important}
+    .stat-row,.nav-tabs,.unified-card,.polaroid,.note-card,.jar-premium-card{backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+    .stat-row,.unified-card,.polaroid{transform:translateZ(0)}
+    .jar-premium-card{animation:none!important} /* freeze continuous box-shadow pulse */
   }
   @media (prefers-reduced-motion: reduce) { *{animation:none!important;transition:none!important} }
 </style>
@@ -334,6 +343,56 @@ var CONFIG = {
   jarTotalMessages: 10
 };
 
+/* ── client-side decoder + love jar sync (builder custom data) ── */
+(function(){
+  var raw = "";
+  if (window.location.hash.indexOf('data=') !== -1) {
+    raw = window.location.hash.split('data=')[1].split('&')[0];
+    try { sessionStorage.setItem('deary_custom_data', raw); } catch(e){}
+  } else {
+    try { raw = sessionStorage.getItem('deary_custom_data') || ""; } catch(e){}
+  }
+  if (!raw) return;
+  try {
+    var data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (data.name1) CONFIG.name1 = data.name1;
+    if (data.name2) CONFIG.name2 = data.name2;
+    if (data.anniversaryDate) CONFIG.anniversaryDate = data.anniversaryDate;
+    if (data.passcode) CONFIG.passcode = data.passcode;
+    if (data.journey && CONFIG.journey) CONFIG.journey = data.journey.slice(0, 4);
+    if (data.memories && CONFIG.memories) CONFIG.memories = data.memories.slice(0, 4);
+
+    // Overwrite the 5 custom love letters for the Love Jar
+    if (Array.isArray(data.customJar)) {
+      for (var i = 0; i < 5; i++) {
+        if (data.customJar[i] !== undefined) {
+          try { localStorage.setItem('deary_love_' + i, data.customJar[i]); } catch(e){}
+        }
+      }
+    }
+
+    // Override 3 rotating notes in togetherhome.html if NOTES variable is defined
+    if (Array.isArray(data.notes) && data.notes.length >= 3) {
+      window.__DEARY_NOTES = data.notes.slice(0, 3);
+    }
+  } catch(e) { console.error('Decoder error:', e); }
+
+  // Carry #data= forward to internal links and redirects
+  var currentHash = window.location.hash;
+  if (currentHash && currentHash.indexOf('data=') !== -1) {
+    if (CONFIG.redirectTo && CONFIG.redirectTo.indexOf('#') === -1) {
+      CONFIG.redirectTo += currentHash;
+    }
+    window.addEventListener('DOMContentLoaded', function(){
+      document.querySelectorAll('a[href$=".html"]').forEach(function(a){
+        if (a.getAttribute('href').indexOf('#') === -1) {
+          a.setAttribute('href', a.getAttribute('href') + currentHash);
+        }
+      });
+    });
+  }
+})();
+
 function switchTab(tabId, btnElement) {
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
   btnElement.classList.add('active');
@@ -356,7 +415,9 @@ document.getElementById('jarPreviewSub').textContent = CONFIG.jarTotalMessages +
   var cv = document.getElementById('heartCanvas');
   if(!cv) return;
   var ctx = cv.getContext('2d');
-  var W = 260, H = 240, dpr = Math.min(2, window.devicePixelRatio || 1);
+  var MOBILE = ('ontouchstart' in window) || window.innerWidth < 768;
+  var dpr = MOBILE ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  var W = 260, H = 240;
   cv.width = W * dpr; cv.height = H * dpr;
   ctx.scale(dpr, dpr);
   var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -411,12 +472,20 @@ document.getElementById('jarPreviewSub').textContent = CONFIG.jarTotalMessages +
     pts.forEach(function(pt){
       var tw = 0.55 + 0.45 * Math.sin(sec * pt.n.sp + pt.n.ph);
       var R = pt.n.r * (0.85 + 0.3 * tw);
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.65 * tw;
-      ctx.shadowBlur = 12; ctx.shadowColor = '#ffffff';
+      if (MOBILE) {
+        // simple glowing circles — no shadowBlur on mobile GPUs
+        ctx.globalAlpha = 0.18 * (0.35 + 0.65 * tw);
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, R * 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.65 * tw;
+        ctx.shadowBlur = 12; ctx.shadowColor = '#ffffff';
+      }
       ctx.beginPath(); ctx.arc(pt.x, pt.y, R, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff'; ctx.fill();
-      ctx.restore();
+      if (!MOBILE) ctx.restore();
+      ctx.globalAlpha = 1;
     });
     if(!REDUCED) requestAnimationFrame(draw);
   }
@@ -425,7 +494,7 @@ document.getElementById('jarPreviewSub').textContent = CONFIG.jarTotalMessages +
 
 /* Today's Little Note — 3 rotating notes */
 (function(){
-  var NOTES = [
+  var NOTES = window.__DEARY_NOTES || [
     "You are my favourite place to return to, no matter where the day takes me.",
     "Her smile is my favourite notification \u2014 no phone ever topped it.",
     "Whatever the day holds, it ends the same way: grateful for you."
@@ -463,8 +532,9 @@ CONFIG.memories.forEach(function(m) {
   memTrack.innerHTML += '<div class="polaroid">' + visual + '<div class="cap">' + m.title + ' — ' + m.desc + '</div><div class="pdate">' + m.date + '</div></div>';
 });
 
-/* Monogram subtle 3D tilt on mousemove */
+/* Monogram subtle 3D tilt on mousemove — pointer devices only */
 (function(){
+  if (!(window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768)) return;
   var wrap = document.getElementById('monogramWrap');
   var raf = null, tx=0, ty=0, cx=0, cy=0;
   function loop(){
@@ -485,47 +555,55 @@ CONFIG.memories.forEach(function(m) {
 /* BACKGROUND CANVAS — twinkling stars + fireflies reacting to cursor */
 (function () {
   var c = document.getElementById('canvas3d'), ctx = c.getContext('2d');
+  var MOBILE = ('ontouchstart' in window) || window.innerWidth < 768;
   var W, H, stars = [], fireflies = [], shootingStars = [];
   var mx = 0.5, my = 0.5, smx = 0.5, smy = 0.5; // raw + smoothed cursor
-  document.addEventListener('mousemove', function(e){ mx = e.clientX/window.innerWidth; my = e.clientY/window.innerHeight; });
-  document.addEventListener('touchmove', function(e){ if(e.touches[0]){ mx=e.touches[0].clientX/window.innerWidth; my=e.touches[0].clientY/window.innerHeight; } }, {passive:true});
+  if (!MOBILE) {
+    document.addEventListener('mousemove', function(e){ mx = e.clientX/window.innerWidth; my = e.clientY/window.innerHeight; });
+    document.addEventListener('touchmove', function(e){ if(e.touches[0]){ mx=e.touches[0].clientX/window.innerWidth; my=e.touches[0].clientY/window.innerHeight; } }, {passive:true});
+  }
   function resize() { W = c.width = innerWidth; H = c.height = innerHeight; init(); }
   function init() {
     stars = []; fireflies = [];
-    for (var i = 0; i < 80; i++) stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.2+0.25, a: Math.random()*0.7+0.15, da: (Math.random()-0.5)*0.012, depth: Math.random()*0.8+0.2, gold: Math.random()<0.15 });
-    for (var j = 0; j < 26; j++) fireflies.push({ x: Math.random()*W, y: H*0.3+Math.random()*H*0.7, r: Math.random()*1.9+0.9, speedY: Math.random()*0.5+0.15, drift: (Math.random()-0.5)*0.5, a: Math.random()*0.55+0.2, ph: Math.random()*Math.PI*2 });
+    var starCount = MOBILE ? 25 : 80, flyCount = MOBILE ? 6 : 26;
+    for (var i = 0; i < starCount; i++) stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.2+0.25, a: Math.random()*0.7+0.15, da: (Math.random()-0.5)*0.012, depth: Math.random()*0.8+0.2, gold: Math.random()<0.15 });
+    for (var j = 0; j < flyCount; j++) fireflies.push({ x: Math.random()*W, y: H*0.3+Math.random()*H*0.7, r: Math.random()*1.9+0.9, speedY: Math.random()*0.5+0.15, drift: (Math.random()-0.5)*0.5, a: Math.random()*0.55+0.2, ph: Math.random()*Math.PI*2 });
   }
   function spawnShootingStar() {
-    if (Math.random() > 0.0035) return;
+    if (Math.random() > (MOBILE ? 0.0022 : 0.0035)) return;
     shootingStars.push({ x: Math.random()*W*0.8, y: Math.random()*H*0.35, len: Math.random()*110+60, speed: Math.random()*8+5, angle: Math.PI/4+(Math.random()-0.5)*0.3, life: 1 });
   }
   function render() {
-    smx += (mx-smx)*0.04; smy += (my-smy)*0.04; // smooth cursor
-    var px = (smx-0.5), py = (smy-0.5);
     ctx.clearRect(0, 0, W, H);
-    // cursor glow
-    var gx = smx*W, gy = smy*H;
-    var glow = ctx.createRadialGradient(gx,gy,0,gx,gy,180);
-    glow.addColorStop(0,'rgba(133,183,235,0.10)'); glow.addColorStop(1,'rgba(133,183,235,0)');
-    ctx.fillStyle = glow; ctx.fillRect(gx-180,gy-180,360,360);
+    if (!MOBILE) {
+      smx += (mx-smx)*0.04; smy += (my-smy)*0.04; // smooth cursor
+      var px = (smx-0.5), py = (smy-0.5);
+      // cursor glow (desktop only)
+      var gx = smx*W, gy = smy*H;
+      var glow = ctx.createRadialGradient(gx,gy,0,gx,gy,180);
+      glow.addColorStop(0,'rgba(133,183,235,0.10)'); glow.addColorStop(1,'rgba(133,183,235,0)');
+      ctx.fillStyle = glow; ctx.fillRect(gx-180,gy-180,360,360);
+    } else { var px = 0, py = 0; }
     stars.forEach(function(s){
       s.a += s.da; if (s.a <= 0.1 || s.a >= 0.88) s.da *= -1;
-      var ox = px * -26 * s.depth, oy = py * -18 * s.depth; // parallax reacts to cursor
+      var ox = MOBILE ? 0 : px * -26 * s.depth, oy = MOBILE ? 0 : py * -18 * s.depth; // parallax (desktop only)
       ctx.beginPath(); ctx.arc(s.x+ox, s.y+oy, s.r, 0, Math.PI*2);
       ctx.fillStyle = s.gold ? ('rgba(255,255,255,'+s.a+')') : ('rgba(181,212,244,'+s.a+')');
-      if(s.r>1.2){ ctx.shadowBlur=8; ctx.shadowColor=s.gold?'#ffffff':'#85b7eb'; } else ctx.shadowBlur=0;
+      if(!MOBILE && s.r>1.2){ ctx.shadowBlur=8; ctx.shadowColor=s.gold?'#ffffff':'#85b7eb'; } else ctx.shadowBlur=0;
       ctx.fill(); ctx.shadowBlur=0;
     });
     fireflies.forEach(function(f){
       f.ph += 0.02; f.y -= f.speedY; f.x += Math.sin(f.y*0.02+f.ph)*f.drift;
-      // subtle attraction away/toward cursor
-      var dx = (smx*W)-f.x, dy = (smy*H)-f.y, d = Math.sqrt(dx*dx+dy*dy)||1;
-      if(d<220){ f.x += (dx/d)*0.35; f.y += (dy/d)*0.25; }
+      if (!MOBILE) { // subtle attraction toward cursor (desktop only)
+        var dx = (smx*W)-f.x, dy = (smy*H)-f.y, d = Math.sqrt(dx*dx+dy*dy)||1;
+        if(d<220){ f.x += (dx/d)*0.35; f.y += (dy/d)*0.25; }
+      }
       var tw = f.a + Math.sin(f.ph*2)*0.18;
       if (f.y < -12) { f.y = H+12; f.x = Math.random()*W; }
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
       ctx.fillStyle = 'rgba(255,255,255,'+Math.max(0.08,tw).toFixed(3)+')';
-      ctx.shadowBlur = 14; ctx.shadowColor = '#ffffff'; ctx.fill(); ctx.shadowBlur = 0;
+      if(!MOBILE){ ctx.shadowBlur = 14; ctx.shadowColor = '#ffffff'; }
+      ctx.fill(); ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r*0.45, 0, Math.PI*2);
       ctx.fillStyle='rgba(255,244,220,0.9)'; ctx.fill();
     });
@@ -543,8 +621,9 @@ CONFIG.memories.forEach(function(m) {
   window.addEventListener('resize', resize); resize(); render();
 })();
 
-/* 3D tilt for cards */
+/* 3D tilt for cards — pointer devices only */
 (function () {
+  if (!(window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768)) return;
   var maxTilt = 8;
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   document.addEventListener('mousemove', function (e) {
@@ -561,3 +640,4 @@ CONFIG.memories.forEach(function(m) {
 </script>
 </body>
 </html>
+
