@@ -5,11 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Deary — Together · Love Jar</title>
 <script>
+  // Builder preview guard — auto-unlock when previewing inside the builder
+  if (window.location.search.includes('preview=1') || window.location.hash.includes('preview=1')) {
+    try { sessionStorage.setItem('dearyUnlocked', '1'); } catch(e){}
+  }
+  // Auth guard — redirect to lock screen if not unlocked
   try {
     if (sessionStorage.getItem("dearyUnlocked") !== "1") {
-      window.location.href = "index.html";
+      window.location.href = "index_2.html";
     }
-  } catch(e){ window.location.href = "index.html"; }
+  } catch(e){ window.location.href = "index_2.html"; }
+</script>
+<script>
+  /* jar has no body-config of its own — safe container for the decoder */
+  var CONFIG = window.CONFIG || {};
+
+  /* ── client-side decoder + love jar sync (builder custom data) ── */
+  (function(){
+    var raw = "";
+    if (window.location.hash.indexOf('data=') !== -1) {
+      raw = window.location.hash.split('data=')[1].split('&')[0];
+      try { sessionStorage.setItem('deary_custom_data', raw); } catch(e){}
+    } else {
+      try { raw = sessionStorage.getItem('deary_custom_data') || ""; } catch(e){}
+    }
+    if (!raw) return;
+    try {
+      var data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      if (data.name1) CONFIG.name1 = data.name1;
+      if (data.name2) CONFIG.name2 = data.name2;
+      if (data.anniversaryDate) CONFIG.anniversaryDate = data.anniversaryDate;
+      if (data.passcode) CONFIG.passcode = data.passcode;
+      if (data.journey && CONFIG.journey) CONFIG.journey = data.journey.slice(0, 4);
+      if (data.memories && CONFIG.memories) CONFIG.memories = data.memories.slice(0, 4);
+
+      // Overwrite the 5 custom love letters for the Love Jar
+      if (Array.isArray(data.customJar)) {
+        for (var i = 0; i < 5; i++) {
+          if (data.customJar[i] !== undefined) {
+            try { localStorage.setItem('deary_love_' + i, data.customJar[i]); } catch(e){}
+          }
+        }
+      }
+
+      // Override 3 rotating notes in togetherhome.html if NOTES variable is defined
+      if (Array.isArray(data.notes) && data.notes.length >= 3) {
+        window.__DEARY_NOTES = data.notes.slice(0, 3);
+      }
+    } catch(e) { console.error('Decoder error:', e); }
+
+    // Carry #data= forward to internal links and redirects
+    var currentHash = window.location.hash;
+    if (currentHash && currentHash.indexOf('data=') !== -1) {
+      if (CONFIG.redirectTo && CONFIG.redirectTo.indexOf('#') === -1) {
+        CONFIG.redirectTo += currentHash;
+      }
+      window.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('a[href$=".html"]').forEach(function(a){
+          if (a.getAttribute('href').indexOf('#') === -1) {
+            a.setAttribute('href', a.getAttribute('href') + currentHash);
+          }
+        });
+      });
+    }
+  })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -217,6 +276,12 @@
     .paper{padding:38px 26px 28px}
     .paper .msg{font-size:1.2rem}
     .stage{min-height:58vh}
+  }
+  /* ── mobile GPU/CPU optimizations ── */
+  @media(max-width:768px){
+    .aurora{filter:blur(35px);animation:none!important}
+    .back,.count-pill,.arch-card,.sealed-card,.keep-open,.btn-gold{backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+    .arch-card,.count-pill{transform:translateZ(0)}
   }
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation:none!important;transition:none!important}
@@ -641,6 +706,7 @@
 
   /* quiet midnight sky : home's mood, fewer glitters */
   var c = document.getElementById('stars'), ctx = c.getContext('2d'), W, H, stars = [], flies = [], meteors = [];
+  var SKYMOBILE = ('ontouchstart' in window) || window.innerWidth < 768;
   function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; init(); }
   function init(){
     stars = []; flies = [];
@@ -667,7 +733,7 @@
       s.a += s.da; if(s.a <= .06 || s.a >= .8) s.da *= -1;
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(170,205,245,' + s.a.toFixed(3) + ')';
-      if(s.big){ ctx.shadowBlur = 8; ctx.shadowColor = '#cfe6ff'; } else { ctx.shadowBlur = 0; }
+      if(s.big && !SKYMOBILE){ ctx.shadowBlur = 8; ctx.shadowColor = '#cfe6ff'; } else { ctx.shadowBlur = 0; }
       ctx.fill(); ctx.shadowBlur = 0;
     });
     flies.forEach(function(fl){
@@ -676,7 +742,12 @@
       var tw = fl.a + Math.sin(fl.ph * 2) * 0.12;
       ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(207,230,255,' + Math.max(0.06, tw).toFixed(3) + ')';
-      ctx.shadowBlur = 12; ctx.shadowColor = '#9cc4ef'; ctx.fill(); ctx.shadowBlur = 0;
+      if(!SKYMOBILE){ ctx.shadowBlur = 12; ctx.shadowColor = '#9cc4ef'; }
+      ctx.fill(); ctx.shadowBlur = 0;
+      if(SKYMOBILE){
+        ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r*0.45, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(236,246,255,'+Math.max(0.1,tw).toFixed(3)+')'; ctx.fill();
+      }
     });
     spawnMeteor();
     for(var i = meteors.length - 1; i >= 0; i--){
@@ -696,3 +767,4 @@
 </script>
 </body>
 </html>
+
