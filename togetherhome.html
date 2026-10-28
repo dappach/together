@@ -203,8 +203,12 @@
   .love-footer{margin-top:48px;padding:28px 16px 10px;border-top:1px solid rgba(255,255,255,.06);text-align:center}
   .foot-heart{color:var(--ice);font-size:1rem;text-shadow:0 0 12px rgba(207,230,255,.7);margin-bottom:10px;animation:floatHeart 3.2s ease-in-out infinite}
   .foot-note{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.15rem;color:var(--text);margin-bottom:8px}
-  .foot-small{font-size:.66rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
-  .foot-small span{color:var(--ice)}
+  .foot-meta{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .foot-tag,.foot-names,.foot-date{font-size:.66rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase}
+  .foot-tag{color:var(--muted)}
+  .foot-names{color:var(--ice);text-shadow:0 0 12px rgba(207,230,255,.35)}
+  .foot-date{color:var(--muted);font-variant-numeric:tabular-nums}
+  .foot-sep{color:rgba(207,230,255,.4);font-size:.58rem}
   .tpl-credit{display:inline-block;margin-top:12px;text-decoration:none;color:var(--text);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;opacity:.75;transition:all .3s ease}
   .tpl-credit:visited{color:var(--text)}
   .tpl-credit:hover,.tpl-credit:active{opacity:1;color:#fff;filter:drop-shadow(0 0 8px rgba(133,183,235,.6));transform:translateY(-2px)}
@@ -272,7 +276,7 @@
 
   <div id="journeySection" class="content-section active">
     <div class="section-title">Our Journey <em>So Far</em></div>
-    <div class="section-desc">Swipe or use arrows to travel through time ♡</div>
+    <div class="section-desc">Swipe to travel through time ♡</div>
     <div class="carousel-container">
       <button class="carousel-btn" onclick="scrollCarousel('journeyTrack', -320)" aria-label="Previous">❮</button>
       <div class="carousel-track" id="journeyTrack"></div>
@@ -318,10 +322,15 @@
   <footer class="love-footer">
     <div class="foot-heart">♡</div>
     <div class="foot-note">for the girl whose smile rewrote my stars</div>
-    <div class="foot-small">Together Forever · <span id="footNames">A & M</span> · <span id="footDate">14 · 02 · 2024</span></div>
-    <!-- TODO: replace href with your website URL when ready -->
+    <div class="foot-meta">
+      <span class="foot-tag">Together Forever</span>
+      <span class="foot-sep">✦</span>
+      <span class="foot-names" id="footNames">A &amp; M</span>
+      <span class="foot-sep">✦</span>
+      <span class="foot-date" id="footDate">14 · 02 · 2024</span>
+    </div>
     <div class="tpl-div" aria-hidden="true"></div>
-    <a class="tpl-credit" href="https://YOUR-WEBSITE.com" target="_blank" rel="noopener noreferrer">Created with Deary ✦<span class="tpl-sub">GET THIS TEMPLATE · BUILD YOUR OWN</span></a>
+    <a class="tpl-credit" href="store.html">Created with Deary ✦<span class="tpl-sub">GET THIS TEMPLATE · BUILD YOUR OWN</span></a>
   </footer>
 </main>
 
@@ -375,6 +384,9 @@ var CONFIG = {
     if (Array.isArray(data.notes) && data.notes.length >= 3) {
       window.__DEARY_NOTES = data.notes.slice(0, 3);
     }
+
+    // Re-render header, monogram and footer with the custom names/date
+    if (typeof renderDynamicMetadata === 'function') renderDynamicMetadata();
   } catch(e) { console.error('Decoder error:', e); }
 
   // Carry #data= forward to internal links and redirects
@@ -401,13 +413,28 @@ function switchTab(tabId, btnElement) {
 }
 function scrollCarousel(id, amount) { document.getElementById(id).scrollBy({ left: amount, behavior: 'smooth' }); }
 
-var annDate = new Date(CONFIG.anniversaryDate);
-document.getElementById('sinceBadge').textContent = '✦ SINCE ' + annDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase() + ' ✦';
-document.getElementById('namesText').innerHTML = CONFIG.name1 + ' <em>&</em> ' + CONFIG.name2;
-document.getElementById('monoLetters').innerHTML = CONFIG.name1.charAt(0) + ' <em>&</em> ' + CONFIG.name2.charAt(0);
-document.getElementById('monoDate').textContent = annDate.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replaceAll('/',' · ');
-document.getElementById('footNames').textContent = CONFIG.name1.charAt(0) + ' & ' + CONFIG.name2.charAt(0);
-document.getElementById('footDate').textContent = annDate.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replaceAll('/',' · ');
+function renderDynamicMetadata() {
+  var annDate = new Date(CONFIG.anniversaryDate);
+  var initials = (CONFIG.name1 ? CONFIG.name1.charAt(0) : 'A') + ' & ' + (CONFIG.name2 ? CONFIG.name2.charAt(0) : 'M');
+  var formattedDate = annDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', ' · ');
+
+  // Header & Monogram
+  var sinceBadge = document.getElementById('sinceBadge');
+  if (sinceBadge) sinceBadge.textContent = '✦ SINCE ' + annDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase() + ' ✦';
+  var namesText = document.getElementById('namesText');
+  if (namesText) namesText.innerHTML = CONFIG.name1 + ' <em>&</em> ' + CONFIG.name2;
+  var monoLetters = document.getElementById('monoLetters');
+  if (monoLetters) monoLetters.innerHTML = (CONFIG.name1 ? CONFIG.name1.charAt(0) : 'A') + ' <em>&amp;</em> ' + (CONFIG.name2 ? CONFIG.name2.charAt(0) : 'M');
+  var monoDate = document.getElementById('monoDate');
+  if (monoDate) monoDate.textContent = formattedDate;
+
+  // Footer dynamically bound to custom names and date
+  var footNames = document.getElementById('footNames');
+  if (footNames) footNames.textContent = initials;
+  var footDate = document.getElementById('footDate');
+  if (footDate) footDate.textContent = formattedDate;
+}
+renderDynamicMetadata();
 document.getElementById('jarPreviewSub').textContent = CONFIG.jarTotalMessages + ' secret letters inside.';
 
 /* White Constellation Heart — heartbeat pulse and twinkle */
@@ -516,7 +543,7 @@ document.getElementById('jarPreviewSub').textContent = CONFIG.jarTotalMessages +
 })();
 
 function updateCounter() {
-  var diff = Math.max(0, Date.now() - annDate.getTime());
+  var diff = Math.max(0, Date.now() - new Date(CONFIG.anniversaryDate).getTime());
   document.getElementById('dCount').textContent = Math.floor(diff / 86400000);
   document.getElementById('hCount').textContent = String(Math.floor((diff % 86400000) / 3600000)).padStart(2,'0');
   document.getElementById('mCount').textContent = String(Math.floor((diff % 3600000) / 60000)).padStart(2,'0');
@@ -640,4 +667,5 @@ CONFIG.memories.forEach(function(m) {
 </script>
 </body>
 </html>
+
 
